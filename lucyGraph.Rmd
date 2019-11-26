@@ -14,31 +14,77 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(reshape2)
+library(MASS)
+library(GGally)
 airbnb <- read.csv("AB_NYC_2019.csv")
-head(airbnb)
 ```
 
 ## Histogram
 
+The histogram for the price variable is unimodal, with a huge peak at the lower end. It is very skewed, with a long tail extending to the right hand side. The two center measurements that we typically use -- mean and median -- are very different in this case, with median 106 dollars, and mean 152 dollars. This is because the mean value is dragged toward the higher price end by the super expensive houses. It has multiple outliers, ranging from 2500 dollars to 10000 dollars.
+
 ```{r, message=FALSE, warning=FALSE}
 ggplot(airbnb, aes(x = price, fill = as.factor(neighbourhood_group)))+
-    geom_histogram()+
+    geom_histogram(bins = 40)+
     labs(title = "Histogram of NYC Airbnb Price",
          x = "Price ($)",
          y = "Frequency Count",
          fill = "Neighbourhood Group")
+
+summary(airbnb$price)
 ```
 
 ## Coorelation Heatmap
 
-```{r, message=FALSE, warning=FALSE}
+The correlation Heatmap shows us correlation between each continuous variables for the NYC Airbnb dataset (id and host_id are not included). 
+- Positively correlated variables are: review_per_month and number_of_reviews, review_per_month and avalibility_365, latitude and avalibility_365, latitude and review_per_month, latitude and price. 
+- Negatively correlated variables are: latitude and longitude, longitude and avalibility_365, longitude and reviews_per_month, longitude and price.
+- Almost not correlated variables are: price and minimum_nights, price and number_of_reviews, latitude and calculated_host_listing_count.
 
+```{r, message=FALSE, warning=FALSE}
+airbnb_cont <- dplyr::select(airbnb, latitude, longitude, price, minimum_nights, number_of_reviews, reviews_per_month, calculated_host_listings_count, availability_365)
+airbnb_cont[is.na(airbnb_cont$reviews_per_month), ] <- 0
+
+C = cor(airbnb_cont)
+mC = melt(C)
+p = ggplot(data = mC, aes(x = Var1, y = Var2, fill = value))+
+    geom_tile()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+    scale_fill_gradient2(low = "red", mid = "lightgrey", high = "blue", limits = c(-1,1))+
+    labs(title = "Correlation Heap Map of NYC Airbnb",
+       x = "Continuous Variables",
+       y = "Continuous Variables",
+       fill = "Correlation values")
+plot(p)
 ```
 
 ## Parallel Coordinate Graph and Radar Graph
 
-```{r, message=FALSE, warning=FALSE}
+Parallel Coordinate plot allows us to see all the values for each variable, for different neighbourhood groups. Neighbourhood 2 and 3 has the highest price, and highest requirement of minimum nights. Neighbourhood 4 has the most number_of_reviews. Neighbourhood 5 has the lowest longitude.
 
+Also we say that price and minimum_nights are negatively related because in the parallel coordinate plot, the lines between these variabesl are crossing, forming a “X” shape, which indicates a negative correlation.
+
+```{r, message=FALSE, warning=FALSE}
+cont_cols <- which(names(airbnb) %in%
+    c("airbnb", "latitude", "longitude", "price", "minimum_nights", "number_of_reviews", "reviews_per_month", "calculated_host_listings_count", "availability_365"))
+
+ggparcoord(airbnb, columns = cont_cols)+
+    aes(color = as.factor(neighbourhood_group))+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+    labs(title = "Parallel Coordinate Graph of NYC Airbnb by Neighbourhood Group",
+         x = "Continuous Variables",
+         y = "Values",
+         color = "Neighbourhood Group")
+
+ggparcoord(airbnb, columns = cont_cols)+
+    aes(color = as.factor(neighbourhood_group))+
+    coord_polar()+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+    labs(title = "Radar Graph of NYC Airbnb by Neighbourhood Group",
+         x = "Continuous Variables",
+         y = "Values",
+         color = "Neighbourhood Group")
 ```
 
 
